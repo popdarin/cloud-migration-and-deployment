@@ -35,5 +35,27 @@ pipeline {
                 }
             }
         }
+
+        stage('Performance Benchmarking') {
+            steps {
+                sshagent(['aws-ec2-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.106.58.234 "
+                            # 1. ติดตั้งเครื่องมือ Apache Benchmark (ab) หากยังไม่มีในเครื่อง
+                            sudo apt-get update && sudo apt-get install -y apache2-utils
+                            
+                            # 2. ทำการรัน Load Test ยิงถล่มหน้าเว็บตัวเองจำนวน 1,000 Requests (พร้อมกันทีละ 50 Concurrency)
+                            echo '=== STARTING LOAD TEST ==='
+                            ab -n 1000 -c 50 http://localhost/
+                            echo '=== LOAD TEST COMPLETED ==='
+                            
+                            # 3. ตรวจสอบขนาดของ Docker Image ที่ใช้งานในระบบจริง
+                            echo '=== IMAGE SIZE CHECK ==='
+                            docker images nginx:alpine
+                        "
+                    '''
+                }
+            }
+        }
     }
 }
