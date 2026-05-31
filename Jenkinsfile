@@ -1,21 +1,28 @@
 pipeline {
     agent any
+
     stages {
         stage('Checkout Code') {
             steps {
-                // โค้ดส่วนนี้ Jenkins จะจัดการดึงให้อัตโนมัติเมื่อผูกกับระบบ
                 checkout scm
             }
         }
+
         stage('Deploy to Production') {
             steps {
-                sh '''
-                    mkdir -p ~/app
-                    cp -r * ~/app/ || true
-                    cd ~/app
-                    docker compose down || true
-                    docker compose up -d
-                '''
+                sshagent(['aws-ec2-key']) {
+                    sh '''
+                        mkdir -p ~/app
+                        
+                        scp -o StrictHostKeyChecking=no Jenkinsfile README.md docker-compose.yml ubuntu@3.106.58.234:~/app/
+                        
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.106.58.234 "
+                            cd ~/app &&
+                            docker compose down || true &&
+                            docker compose up -d
+                        "
+                    '''
+                }
             }
         }
     }
